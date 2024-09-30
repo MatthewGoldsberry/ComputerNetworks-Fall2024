@@ -62,13 +62,13 @@ Book Provided Code:
 from socket import *
 serverPort = 12000
 serverSocket = socket(AF_INET, SOCK_DGRAM)
-serverSocket.bind(('',serverPort))
+serverSocket.bind(('',port))
 serverSocket.listen(1)
 print('The server is ready to recieve')
 while True:
     connectionSocket, addr = serverSocket.accept()
     sentence = connectionSocket.recv(1024).decode()
     captializedSentence = sentence.upper()
-    connetionSocket.send(capitalizedSentence.encode())
+    connectionSocket.send(captializedSentence.encode())
     connectionSocket.close()
 ```
