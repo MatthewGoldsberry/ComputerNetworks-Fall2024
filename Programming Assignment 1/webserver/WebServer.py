@@ -3,23 +3,35 @@
 # Matthew Goldsberry        #
 # ------------------------- #
 
+# import necessary libraries
 from socket import *
 import threading
+import signal
 
-class HttpRequest(threading.Thread):
+# global variable to hold the server socket (Needed for SIGINT handling)
+serverSocket = None
+
+class HttpRequest(threading.Thread):\
+    # define the carriage return line feed for HTTP
     CRLF = "\r\n"
 
     # Constructor
     def __init__(self, socket):
+        # initialize the thread
         super().__init__()
+        # assign the client socket
         self.socket = socket
 
+    # run method for handlign the request in a seperate thread
     def run(self):
         try:
+            # process the HTTP request
             self.processRequest()
         except Exception as e:
+            # if any execptions occur, print them
             print(e)
 
+    # method to process the incoming HTTP request
     def processRequest(self):
         # get a reference to the socket's input and output streams
         inputStream = self.socket.makefile('r')
@@ -44,6 +56,18 @@ class HttpRequest(threading.Thread):
         self.socket.close()
 
 
+# Signal handler to shut down the server when SIGINT is sent (Ctrl + C)
+def signal_handler(sig, frame):
+    print("\nServer is shutting down...")
+    # if the server socket is open, close it
+    if serverSocket:
+        serverSocket.close()
+    print("Server Shutdown.")
+    # exit the program
+    exit(0)
+
+
+# main function to run the web server
 def webserver():
     # set the port number 
     port = 6789
@@ -54,9 +78,15 @@ def webserver():
     serverSocket.listen(1)
     print(f"Server is running on port {port}...")
 
-    try:
-        # process HTTP service requests in an infinite loop.
-        while True:
+    # set a timeout time to allow for breaks for SIGINT to be read (Ctrl + C)
+    serverSocket.settimeout(1)
+
+    # register signal handler for SIGINT (Ctrl + C)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    # process HTTP service requests in an infinite loop.
+    while True:
+        try:
             print("Waiting for a connection...")
 
             # listen for a TCP connection request.
@@ -65,12 +95,12 @@ def webserver():
 
             # construct an object to process the HTTP request message
             request = HttpRequest(connectionSocket)
+
             # start the thread
             request.start()
-    except KeyboardInterrupt:
-        # Handle the SIGINT signal (ctrl + c)
-        print("Server is shutting down...")
-        serverSocket.close()
+        # ignore the TimeoutErrors from the settimeout
+        except TimeoutError:
+            continue
 
 if __name__ == "__main__":
     webserver()
