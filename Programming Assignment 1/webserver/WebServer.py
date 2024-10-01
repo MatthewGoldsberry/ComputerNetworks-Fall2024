@@ -7,9 +7,11 @@
 from socket import *
 import threading
 import signal
+import sys
 
 # global variable to hold the server socket (Needed for SIGINT handling)
 serverSocket = None
+shutdown_flag = False
 
 class HttpRequest(threading.Thread):\
     # define the carriage return line feed for HTTP
@@ -21,6 +23,7 @@ class HttpRequest(threading.Thread):\
         super().__init__()
         # assign the client socket
         self.socket = socket
+        self.daemon = True
 
     # run method for handlign the request in a seperate thread
     def run(self):
@@ -50,6 +53,8 @@ class HttpRequest(threading.Thread):\
         while (headerLine := bufferedReader.readline().strip()):
             print(headerLine)
 
+        print("\n")
+
         # close streams and sockets
         outputStream.close()
         bufferedReader.close()
@@ -59,6 +64,7 @@ class HttpRequest(threading.Thread):\
 # Signal handler to shut down the server when SIGINT is sent (Ctrl + C)
 def signal_handler(sig, frame):
     print("\nServer is shutting down...")
+    shutdown_flag = True
     # if the server socket is open, close it
     if serverSocket:
         serverSocket.close()
@@ -79,19 +85,19 @@ def webserver():
     print(f"Server is running on port {port}...")
 
     # set a timeout time to allow for breaks for SIGINT to be read (Ctrl + C)
-    serverSocket.settimeout(1)
+    serverSocket.settimeout(3)
 
     # register signal handler for SIGINT (Ctrl + C)
     signal.signal(signal.SIGINT, signal_handler)
 
     # process HTTP service requests in an infinite loop.
-    while True:
+    while not shutdown_flag:
         try:
             print("Waiting for a connection...")
 
             # listen for a TCP connection request.
             connectionSocket, addr = serverSocket.accept()
-            print(f"Connection from {addr} has been established.")
+            # print(f"Connection from {addr} has been established.")
 
             # construct an object to process the HTTP request message
             request = HttpRequest(connectionSocket)
@@ -101,6 +107,10 @@ def webserver():
         # ignore the TimeoutErrors from the settimeout
         except TimeoutError:
             continue
+        # Handle the case when the server socket is closed
+        except OSError as e:
+            if shutdown_flag:
+                break
 
 if __name__ == "__main__":
     webserver()
