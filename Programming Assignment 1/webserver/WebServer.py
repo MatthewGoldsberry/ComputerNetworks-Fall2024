@@ -96,9 +96,9 @@ class HttpRequest(threading.Thread):\
         if filename.endswith(".htm") or filename.endswith(".html"):
             # return the MIME type for html
             return "text/html"
-        elif filename.endswith(".jpeg"):
-            # return the MIME type for jpeg
-            return "image/jpeg"
+        elif filename.endswith(".jpg"):
+            # return the MIME type for jpg
+            return "image/jpg"
         elif filename.endswith(".gif"):
             # return the MIME type for gif
             return "image/gif"
