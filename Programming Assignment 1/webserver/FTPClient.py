@@ -23,17 +23,21 @@ class FtpClient:
         """
         try:
             # establish the control socket
-            ...
+            self.controlSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.controlSocket.connect(('localhost', 21))
 
             # get references to the socket input and output streams
-            ...
+            self.controlReader = self.controlSocket.makefile('r')
+            self.controlWriter = self.controlSocket.makefile('wb')
+
 
             # check if the initial connection response code is OK
-            if self.checkResponse(...):
+            if self.checkResponse(220):
                 print("Successfully connected to FTP server")
             
             # send username and password to ftp server
-            ...
+            self.sendCommand(f"USER {username}\r\n", 331)
+            self.sendCommand(f"PASS {password}\r\n", 230)
 
         except socket.gaierror as e: # Python's version of UnknownHostException
             print(f"UnknownHostException: {e}")
