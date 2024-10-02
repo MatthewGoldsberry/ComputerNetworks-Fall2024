@@ -62,6 +62,12 @@ class HttpRequest(threading.Thread):\
         # generate the response
         statusLine, contentTypeLine, entityBody = self.create_response_message(filename, fileExists)
 
+        # write the response into the output stream for the client
+        self.write_header_for_client(outputStream, statusLine, contentTypeLine)
+
+        # send the message 
+        self.send_response_to_client(file, fileExists, outputStream, entityBody)
+
         # get and display the header lines
         while (headerLine := bufferedReader.readline().strip()):
             print(headerLine)
@@ -86,18 +92,19 @@ class HttpRequest(threading.Thread):\
         return filename
     
     def content_type(self, filename):
-        # skip the first "." in filename and split by ".", the second item will be the filetype
-        _, filetype = filename[1:].split(".")
-
-        # Check if the filetype is equal to any of the filetypes used in this lab
-        if filetype == "html":
-            # return the content type for html
+        # Check if the filename endswith is true for any of the filetypes used in this lab
+        if filename.endswith(".htm") or filename.endswith(".html"):
+            # return the MIME type for html
             return "text/html"
-        elif filetype == "jpg":
-            # return the content type for jpg
-            return "image/jpg"
+        elif filename.endswith(".jpeg"):
+            # return the MIME type for jpeg
+            return "image/jpeg"
+        elif filename.endswith(".gif"):
+            # return the MIME type for gif
+            return "image/gif"
         else:
-            assert "Not one of the specified file types"
+            # return generatic placeholder for binary data
+            return "application/octet-stream"
 
     def open_file(self, filename):
         # initialize local variables
@@ -140,7 +147,32 @@ class HttpRequest(threading.Thread):\
         # return the created lines to the response message
         return statusLine, contentTypeLine, entityBody
 
+    def write_header_for_client(self, outputStream, statusLine, contentTypeLine):
+        # send the status line 
+        outputStream.write(statusLine.encode())
 
+        # send the content type line
+        outputStream.write(contentTypeLine.encode())
+
+        # send end-of-header line 
+        CRLF="\r\n"
+        outputStream.write(CRLF)
+    
+    def send_response_to_client(self, file, fileExists, outputStream, entityBody):
+        # 
+        if (fileExists):
+            self.send_bytes(file, outputStream)
+            file.close()
+        else:
+            outputStream.write(entityBody)
+
+    def send_bytes(self, file, outputStream):
+        # 1k bufer to hold bytes on their way to the socket
+        buffer = 1024
+
+        # copy requested file into the socket's output stream
+        while bytes := file.read(buffer):
+            outputStream.write(bytes)
 
 # Signal handler to shut down the server when SIGINT is sent (Ctrl + C)
 def signal_handler(sig, frame):
