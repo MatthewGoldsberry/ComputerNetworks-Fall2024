@@ -6,7 +6,7 @@ import os
 
 class FtpClient:
     
-    def __init(self):
+    def __init__(self):
         """Constructor"""
         self.CRLF = "\r\n"
         self.DEBUG = True # Debug Flag
@@ -96,10 +96,11 @@ class FtpClient:
         response = ""
         try:
             self.controlWriter.write(command.encode())
-            response = self.controlReader.readline().strip()
+            self.controlWriter.flush()
+            response = self.controlReader.readline()
             if self.DEBUG:
                 print(f"Current FTP response: {response}")
-            if not response.startswith(str(expected_response_code)):
+            if not response.startswith(str(expected_response_code).encode()):
                 raise IOError(f"Bad response: {response}")
         except IOError as e:
             print(f"IOException: {e}")
@@ -116,8 +117,8 @@ class FtpClient:
         try:
             self.currentResponse = self.controlReader.readline()
             if self.DEBUG:
-                print(f"Current FTP response: {self.current_response}")
-            if not self.currentResponse.startswith(str(expected_code)):
+                print(f"Current FTP response: {self.currentResponse}")
+            if not self.currentResponse.startswith(str(expected_code).encode()):
                 response_status = False
                 raise IOError(f"Bad response: {self.currentResponse}")
         except IOError as e:
@@ -132,8 +133,8 @@ class FtpClient:
         @return the data port number 
         """
         data_port = 0
-        pattern = re.compile(r"((.*?)\)")
-        matcher = pattern.search(response_line)
+        pattern = re.compile(r"\((.*?)\)")
+        matcher = pattern.search(response_line.decode())
         if matcher:
             str_parts = matcher.group(1).split(",")
             if self.DEBUG:
@@ -143,7 +144,7 @@ class FtpClient:
                 print(f"Data Port: {data_port}")
         return data_port
     
-    def createLocalFile(dis, file_name):
+    def createLocalFile(self, dis, file_name):
         """
         Create the file locally after retreiving data over the FTP data stream.
         @param dis: the data input stream 
@@ -160,3 +161,9 @@ class FtpClient:
             print(f"FileNotFoundError: {e}")
         except IOError as e:
             print(f"IOError: {e}")
+
+# VERIFICATION FOR IT WORKING
+# if __name__ == "__main__":
+#     ftp = FtpClient()
+#     ftp.connect("matt", "123")
+#     ftp.getFile("ftp_test.txt")
