@@ -15,20 +15,62 @@ class FtpClient:
         self.controlWriter = None
         self.currentResponse = ""
 
-    def connect(sef, username, password):
+    def connect(self, username, password):
         """
         Connect to the FTP server
         @param username: the username you use to login to your FTP session
         @param password: the password associated with the username
         """
-        pass
+        try:
+            # establish the control socket
+            ...
+
+            # get references to the socket input and output streams
+            ...
+
+            # check if the initial connection response code is OK
+            if self.checkResponse(...):
+                print("Successfully connected to FTP server")
+            
+            # send username and password to ftp server
+            ...
+
+        except socket.gaierror as e: # Python's version of UnknownHostException
+            print(f"UnknownHostException: {e}")
+        except IOError as e:
+            print(f"IOException: {e}")
 
     def getFile(self, file_name):
         """
         Retrieve the file from FTP server after connection is established
         @param file_name: the name of the file to retrieve
         """
-        pass
+        data_port = 0
+        try:
+            # change to current (root) directory first
+            self.sendCommand(...)
+
+            # set to passive mode and retrieve the data port number from response
+            self.currentResponse = self.sendCommand(...)
+            data_port = ...
+
+            # connect to the data port
+            data_socket = ...
+            data_reader = ...
+
+            # download file from ftp server
+            ...
+
+            # check if the transfer was successful
+            ...
+
+            # write data on a local file
+            self.createLocalFile(data_reader, file_name)
+
+        except socket.gaierror as e:
+            print(f"UnknownHostException: {e}")
+        except IOError as e:
+            print(f"IOException: {e}")
 
     def disconnect(self):
         """Close the FTP connection"""
