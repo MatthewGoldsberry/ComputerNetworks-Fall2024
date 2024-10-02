@@ -46,8 +46,21 @@ class HttpRequest(threading.Thread):\
         # get the request line of the HTTP request message
         requestLine = bufferedReader.readline().strip()
 
+        # display header for the request message
+        print("\nREQUEST:")
+        print("--------------------------------------\n")
+
         # display the request line
         print("\n" + requestLine)
+
+        # get the filename from the request line
+        filename = self.get_filename(requestLine)
+
+        # open the file, returns file and a flag for if it was successfully opened or not
+        file, fileExists = self.open_file(filename)
+
+        # generate the response
+        statusLine, contentTypeLine, entityBody = self.create_response_message(filename, fileExists)
 
         # get and display the header lines
         while (headerLine := bufferedReader.readline().strip()):
@@ -59,6 +72,74 @@ class HttpRequest(threading.Thread):\
         outputStream.close()
         bufferedReader.close()
         self.socket.close()
+
+    def get_filename(self, requestLine):
+        # split the request line by spaces
+        tokens = requestLine.split()
+
+        # grab the filename which will be in index 1 of a request line
+        filename = tokens[1]
+
+        # prepend a dot to the filename to specify starting in the current directory
+        filename = "." + filename
+
+        return filename
+    
+    def content_type(self, filename):
+        # skip the first "." in filename and split by ".", the second item will be the filetype
+        _, filetype = filename[1:].split(".")
+
+        # Check if the filetype is equal to any of the filetypes used in this lab
+        if filetype == "html":
+            # return the content type for html
+            return "text/html"
+        elif filetype == "jpg":
+            # return the content type for jpg
+            return "image/jpg"
+        else:
+            assert "Not one of the specified file types"
+
+    def open_file(self, filename):
+        # initialize local variables
+        file = None
+        fileExists = True
+
+        # try to open the file
+        try: 
+            # open the file in read mode
+            file = open(filename, 'rb')
+        except FileNotFoundError:
+            # if the file is not found set the flag to false
+            fileExists = False
+        
+        # return the file and flag of if it was successfully opened 
+        return file, fileExists
+        
+    def create_response_message(self, filename, fileExists):
+        # initialize local variables
+        statusLine = None
+        contentTypeLine = None
+        entityBody = None 
+        CRLF="\r\n"
+
+        if (fileExists):
+            statusLine = "HTTP/1.1 200 OK" + CRLF
+            contentTypeLine = "Content-type: " + self.content_type(filename) + CRLF
+        else: 
+            statusLine = "HTTP/1.1 404 Not Found" + CRLF
+            contentTypeLine = "Content-type: text/html" + CRLF
+            entityBody = "<HTML>" + "<HEAD><TITLE>Not Found</TITLE><HEAD>" + "<BODY>Not Found</BODY>" + "</HTML>"
+        
+        # print generated response
+        print("\nRESPONSE:")
+        print("--------------------------------------\n")
+        print(statusLine)
+        print(contentTypeLine)
+        if not fileExists: print(entityBody)
+
+        # return the created lines to the response message
+        return statusLine, contentTypeLine, entityBody
+
 
 
 # Signal handler to shut down the server when SIGINT is sent (Ctrl + C)
