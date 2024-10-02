@@ -37,7 +37,7 @@ class HttpRequest(threading.Thread):\
     def processRequest(self):
         """Process the incoming HTTP request"""
         # get a reference to the socket's input and output streams
-        inputStream = self.socket.makefile('r')
+        inputStream = self.socket.makefile('rb')
         outputStream = self.socket.makefile('wb')
 
         # set up input stream filters
