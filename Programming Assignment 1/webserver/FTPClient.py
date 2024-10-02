@@ -27,7 +27,7 @@ class FtpClient:
             self.controlSocket.connect(('localhost', 21))
 
             # get references to the socket input and output streams
-            self.controlReader = self.controlSocket.makefile('r')
+            self.controlReader = self.controlSocket.makefile('rb')
             self.controlWriter = self.controlSocket.makefile('wb')
 
 
@@ -52,21 +52,22 @@ class FtpClient:
         data_port = 0
         try:
             # change to current (root) directory first
-            self.sendCommand(...)
+            self.sendCommand("CWD /\r\n", 250)
 
             # set to passive mode and retrieve the data port number from response
-            self.currentResponse = self.sendCommand(...)
-            data_port = ...
+            self.currentResponse = self.sendCommand("PASV\r\n", 227)
+            data_port = self.extractDataPort(self.currentResponse)
 
             # connect to the data port
-            data_socket = ...
-            data_reader = ...
+            data_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            data_socket.connect(('localhost',data_port))
+            data_reader = data_socket.makefile('rb')
 
             # download file from ftp server
-            ...
+            self.sendCommand(f"RETR {file_name}\r\n", 150)
 
             # check if the transfer was successful
-            ...
+            self.checkResponse(226)
 
             # write data on a local file
             self.createLocalFile(data_reader, file_name)
