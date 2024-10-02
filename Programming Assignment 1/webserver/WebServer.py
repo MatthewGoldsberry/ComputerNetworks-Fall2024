@@ -14,19 +14,19 @@ serverSocket = None
 shutdown_flag = False
 
 class HttpRequest(threading.Thread):\
-    # define the carriage return line feed for HTTP
-    CRLF = "\r\n"
 
-    # Constructor
     def __init__(self, socket):
+        """Constructor"""
         # initialize the thread
         super().__init__()
         # assign the client socket
         self.socket = socket
         self.daemon = True
+        # define the carriage return line feed for HTTP
+        self.CRLF = "\r\n"
 
-    # run method for handlign the request in a seperate thread
     def run(self):
+        """Handle the HTTP request in a seperate thread"""
         try:
             # process the HTTP request
             self.processRequest()
@@ -34,8 +34,8 @@ class HttpRequest(threading.Thread):\
             # if any execptions occur, print them
             print(e)
 
-    # method to process the incoming HTTP request
     def processRequest(self):
+        """Process the incoming HTTP request"""
         # get a reference to the socket's input and output streams
         inputStream = self.socket.makefile('r')
         outputStream = self.socket.makefile('wb')
@@ -53,6 +53,9 @@ class HttpRequest(threading.Thread):\
         # display the request line
         print("\n" + requestLine)
 
+        # get and display the header lines
+        self.display_header_lines(self, bufferedReader)
+
         # get the filename from the request line
         filename = self.get_filename(requestLine)
 
@@ -68,18 +71,18 @@ class HttpRequest(threading.Thread):\
         # send the message 
         self.send_response_to_client(file, fileExists, outputStream, entityBody)
 
-        # get and display the header lines
-        while (headerLine := bufferedReader.readline().strip()):
-            print(headerLine)
-
-        print("\n")
-
         # close streams and sockets
         outputStream.close()
         bufferedReader.close()
         self.socket.close()
 
+    def display_header_lines(self, bufferedReader):
+        """Read in from bufferedReader and display the remaining headerlines"""
+        while (headerLine := bufferedReader.readline().strip()):
+            print(headerLine)
+
     def get_filename(self, requestLine):
+        """Grab the filename from the request line"""
         # split the request line by spaces
         tokens = requestLine.split()
 
@@ -91,22 +94,8 @@ class HttpRequest(threading.Thread):\
 
         return filename
     
-    def content_type(self, filename):
-        # Check if the filename endswith is true for any of the filetypes used in this lab
-        if filename.endswith(".htm") or filename.endswith(".html"):
-            # return the MIME type for html
-            return "text/html"
-        elif filename.endswith(".jpg"):
-            # return the MIME type for jpg
-            return "image/jpg"
-        elif filename.endswith(".gif"):
-            # return the MIME type for gif
-            return "image/gif"
-        else:
-            # return generatic placeholder for binary data
-            return "application/octet-stream"
-
     def open_file(self, filename):
+        """Try to open the specified file and return the file object and flag for if the file exists"""
         # initialize local variables
         file = None
         fileExists = True
@@ -121,33 +110,54 @@ class HttpRequest(threading.Thread):\
         
         # return the file and flag of if it was successfully opened 
         return file, fileExists
-        
-    def create_response_message(self, filename, fileExists):
-        # initialize local variables
-        statusLine = None
-        contentTypeLine = None
-        entityBody = None 
-        CRLF="\r\n"
 
-        if (fileExists):
-            statusLine = "HTTP/1.1 200 OK" + CRLF
-            contentTypeLine = "Content-type: " + self.content_type(filename) + CRLF
-        else: 
-            statusLine = "HTTP/1.1 404 Not Found" + CRLF
-            contentTypeLine = "Content-type: text/html" + CRLF
-            entityBody = "<HTML>" + "<HEAD><TITLE>Not Found</TITLE><HEAD>" + "<BODY>Not Found</BODY>" + "</HTML>"
+    def content_type(self, filename):
+        """Helper function for create_response_message. Converts filename to MIME type"""
+        # Check if the filename endswith is true for any of the filetypes used in this lab
+        if filename.endswith(".htm") or filename.endswith(".html"):
+            # return the MIME type for html
+            return "text/html"
+        elif filename.endswith(".jpg"):
+            # return the MIME type for jpg
+            return "image/jpg"
+        elif filename.endswith(".gif"):
+            # return the MIME type for gif
+            return "image/gif"
+        else:
+            # return generatic placeholder for binary data
+            return "application/octet-stream"
         
-        # print generated response
+    def print_response(self, statusLine, contentTypeLine, entityBody):
+        """Helper function for create_response_message. Displays the generated response"""
         print("\nRESPONSE:")
         print("--------------------------------------\n")
         print(statusLine)
         print(contentTypeLine)
-        if not fileExists: print(entityBody)
+        if entityBody: print(entityBody)
+        
+    def create_response_message(self, filename, fileExists):
+        """Contrust the HTTP response message"""
+        # if the file exists do not create a entityBody
+        if fileExists:
+            # generate 200 status line, specify content_type (in MIME) of the file and entityBody is None
+            statusLine = "HTTP/1.1 200 OK" + self.CRLF
+            contentTypeLine = "Content-type: " + self.content_type(filename) + self.CRLF
+            entityBody = None 
+        else: 
+            # generate 404 status line (since file was not found), specify the content type of the error
+            # message (in MIME) which is text/html, and set entityBody to a basic error message in HTML
+            statusLine = "HTTP/1.1 404 Not Found" + self.CRLF
+            contentTypeLine = "Content-type: text/html" + self.CRLF
+            entityBody = "<HTML>" + "<HEAD><TITLE>Not Found</TITLE><HEAD>" + "<BODY>Not Found</BODY>" + "</HTML>"
+        
+        # print generated response
+        self.print_response(statusLine, contentTypeLine, entityBody)
 
         # return the created lines to the response message
         return statusLine, contentTypeLine, entityBody
 
     def write_header_for_client(self, outputStream, statusLine, contentTypeLine):
+        """Writes the headers for the output stream"""
         # send the status line 
         outputStream.write(statusLine.encode())
 
@@ -155,18 +165,10 @@ class HttpRequest(threading.Thread):\
         outputStream.write(contentTypeLine.encode())
 
         # send end-of-header line 
-        CRLF="\r\n"
-        outputStream.write(CRLF)
-    
-    def send_response_to_client(self, file, fileExists, outputStream, entityBody):
-        # 
-        if (fileExists):
-            self.send_bytes(file, outputStream)
-            file.close()
-        else:
-            outputStream.write(entityBody)
+        outputStream.write(self.CRLF)
 
     def send_bytes(self, file, outputStream):
+        """Send the file content to the output stream in chunks"""
         # 1k bufer to hold bytes on their way to the socket
         buffer = 1024
 
@@ -174,8 +176,19 @@ class HttpRequest(threading.Thread):\
         while bytes := file.read(buffer):
             outputStream.write(bytes)
 
-# Signal handler to shut down the server when SIGINT is sent (Ctrl + C)
+    def send_response_to_client(self, file, fileExists, outputStream, entityBody):
+        """Send the entity body to output stream"""
+        # if the file exists send the bytes from the file to outputStream in chunks and close file
+        if (fileExists):
+            self.send_bytes(file, outputStream)
+            file.close()
+        else:
+            # if the file does not exists write the error message HTML to the output stream
+            outputStream.write(entityBody)
+
+
 def signal_handler(sig, frame):
+    """Signal handler to shut down the server when SIGINT is sent (Ctrl + C)"""
     print("\nServer is shutting down...")
     shutdown_flag = True
     # if the server socket is open, close it
@@ -186,8 +199,8 @@ def signal_handler(sig, frame):
     exit(0)
 
 
-# main function to run the web server
 def webserver():
+    """Main function to run the web server"""
     # set the port number 
     port = 6789
 
