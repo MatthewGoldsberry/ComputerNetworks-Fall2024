@@ -48,16 +48,16 @@ class HttpRequest(threading.Thread):\
 
         # display header for the request message
         print("\nREQUEST:")
-        print("--------------------------------------\n")
+        print("--------------------------------------")
 
         # display the request line
-        print("\n" + requestLine)
+        print("\n" + requestLine.decode())
 
         # get and display the header lines
-        self.display_header_lines(self, bufferedReader)
+        self.display_header_lines(bufferedReader)
 
         # get the filename from the request line
-        filename = self.get_filename(requestLine)
+        filename = self.get_filename(requestLine.decode())
 
         # open the file, returns file and a flag for if it was successfully opened or not
         file, fileExists = self.open_file(filename)
@@ -79,7 +79,7 @@ class HttpRequest(threading.Thread):\
     def display_header_lines(self, bufferedReader):
         """Read in from bufferedReader and display the remaining headerlines"""
         while (headerLine := bufferedReader.readline().strip()):
-            print(headerLine)
+            print(headerLine.decode())
 
     def get_filename(self, requestLine):
         """Grab the filename from the request line"""
@@ -130,7 +130,7 @@ class HttpRequest(threading.Thread):\
     def print_response(self, statusLine, contentTypeLine, entityBody):
         """Helper function for create_response_message. Displays the generated response"""
         print("\nRESPONSE:")
-        print("--------------------------------------\n")
+        print("--------------------------------------")
         print(statusLine)
         print(contentTypeLine)
         if entityBody: print(entityBody)
@@ -165,7 +165,7 @@ class HttpRequest(threading.Thread):\
         outputStream.write(contentTypeLine.encode())
 
         # send end-of-header line 
-        outputStream.write(self.CRLF)
+        outputStream.write(self.CRLF.encode())
 
     def send_bytes(self, file, outputStream):
         """Send the file content to the output stream in chunks"""
@@ -184,7 +184,7 @@ class HttpRequest(threading.Thread):\
             file.close()
         else:
             # if the file does not exists write the error message HTML to the output stream
-            outputStream.write(entityBody)
+            outputStream.write(entityBody.encode())
 
 
 def signal_handler(sig, frame):
@@ -216,11 +216,11 @@ def webserver():
     # register signal handler for SIGINT (Ctrl + C)
     signal.signal(signal.SIGINT, signal_handler)
 
+    print("Waiting for a connection...")
+
     # process HTTP service requests in an infinite loop.
     while not shutdown_flag:
         try:
-            print("Waiting for a connection...")
-
             # listen for a TCP connection request.
             connectionSocket, addr = serverSocket.accept()
             # print(f"Connection from {addr} has been established.")
