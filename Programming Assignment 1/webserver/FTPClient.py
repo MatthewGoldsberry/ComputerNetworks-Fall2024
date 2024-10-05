@@ -9,7 +9,7 @@ class FtpClient:
     def __init__(self):
         """Constructor"""
         self.CRLF = "\r\n"
-        self.DEBUG = True # Debug Flag
+        self.DEBUG = False # Debug Flag
         self.controlSocket = None
         self.controlReader = None
         self.controlWriter = None
@@ -33,7 +33,8 @@ class FtpClient:
 
             # check if the initial connection response code is OK
             if self.checkResponse(220):
-                print("Successfully connected to FTP server")
+                if self.DEBUG:
+                    print("\nSuccessfully connected to FTP server")
             
             # send username and password to ftp server
             self.sendCommand(f"USER {username}\r\n", 331)
@@ -64,10 +65,17 @@ class FtpClient:
             data_reader = data_socket.makefile('rb')
 
             # download file from ftp server
-            self.sendCommand(f"RETR {file_name}\r\n", 150)
+            if not self.sendCommand(f"RETR {file_name}\r\n", 150):
+                # if it returns None, inidicating file not found, end function
+                return
 
             # check if the transfer was successful
-            self.checkResponse(226)
+            if self.checkResponse(226):
+                if self.DEBUG:
+                    print("getFile successful")
+            else:
+                if self.DEBUG:
+                    print("getFile unsuccessful")
 
             # write data on a local file
             self.createLocalFile(data_reader, file_name)
@@ -84,7 +92,7 @@ class FtpClient:
             self.controlWriter.close()
             self.controlSocket.close()
         except IOError as e:
-            print(f"IOExceptionL {e}")
+            print(f"IOException: {e}")
 
     def sendCommand(self, command, expected_response_code):
         """
@@ -103,7 +111,9 @@ class FtpClient:
             if not response.startswith(str(expected_response_code).encode()):
                 raise IOError(f"Bad response: {response}")
         except IOError as e:
-            print(f"IOException: {e}")
+            if self.DEBUG:
+                print(f"IOException: {e}")
+            response = None
         return response
 
     def checkResponse(self, expected_code):
@@ -122,7 +132,8 @@ class FtpClient:
                 response_status = False
                 raise IOError(f"Bad response: {self.currentResponse}")
         except IOError as e:
-            print(f"IOException: {e}")
+            if self.DEBUG:
+                print(f"IOException: {e}")
         return response_status
 
     def extractDataPort(self, response_line):
