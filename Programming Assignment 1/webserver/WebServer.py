@@ -7,7 +7,7 @@
 from socket import *
 import threading
 import signal
-import sys
+from FTPClient import FtpClient
 
 # global variable to hold the server socket (Needed for SIGINT handling)
 serverSocket = None
@@ -24,6 +24,8 @@ class HttpRequest(threading.Thread):\
         self.daemon = True
         # define the carriage return line feed for HTTP
         self.CRLF = "\r\n"
+        # holds the file
+        self.file = None
 
     def run(self):
         """Handle the HTTP request in a seperate thread"""
@@ -46,6 +48,11 @@ class HttpRequest(threading.Thread):\
         # get the request line of the HTTP request message
         requestLine = bufferedReader.readline().strip()
 
+        # Check if requestLine is None or empty
+        if not requestLine:
+            # Exit the function
+            return
+
         # display header for the request message
         print("\nREQUEST:")
         print("--------------------------------------")
@@ -60,7 +67,7 @@ class HttpRequest(threading.Thread):\
         filename = self.get_filename(requestLine.decode())
 
         # open the file, returns file and a flag for if it was successfully opened or not
-        file, fileExists = self.open_file(filename)
+        self.file, fileExists = self.open_file(filename)
 
         # generate the response
         statusLine, contentTypeLine, entityBody = self.create_response_message(filename, fileExists)
@@ -69,7 +76,7 @@ class HttpRequest(threading.Thread):\
         self.write_header_for_client(outputStream, statusLine, contentTypeLine)
 
         # send the message 
-        self.send_response_to_client(file, fileExists, outputStream, entityBody)
+        self.send_response_to_client(self.file, filename, fileExists, outputStream, entityBody)
 
         # close streams and sockets
         outputStream.close()
@@ -97,19 +104,18 @@ class HttpRequest(threading.Thread):\
     def open_file(self, filename):
         """Try to open the specified file and return the file object and flag for if the file exists"""
         # initialize local variables
-        file = None
         fileExists = True
 
         # try to open the file
         try: 
             # open the file in read mode
-            file = open(filename, 'rb')
+            self.file = open(filename, 'rb')
         except FileNotFoundError:
             # if the file is not found set the flag to false
             fileExists = False
         
         # return the file and flag of if it was successfully opened 
-        return file, fileExists
+        return self.file, fileExists
 
     def content_type(self, filename):
         """Helper function for create_response_message. Converts filename to MIME type"""
@@ -123,6 +129,9 @@ class HttpRequest(threading.Thread):\
         elif filename.endswith(".gif"):
             # return the MIME type for gif
             return "image/gif"
+        elif filename.endswith(".txt"):
+            # return the MIME type for txt
+            return "text/plain"
         else:
             # return generatic placeholder for binary data
             return "application/octet-stream"
@@ -144,12 +153,38 @@ class HttpRequest(threading.Thread):\
             contentTypeLine = "Content-type: " + self.content_type(filename) + self.CRLF
             entityBody = None 
         else: 
-            # generate 404 status line (since file was not found), specify the content type of the error
-            # message (in MIME) which is text/html, and set entityBody to a basic error message in HTML
-            statusLine = "HTTP/1.1 404 Not Found" + self.CRLF
-            contentTypeLine = "Content-type: text/html" + self.CRLF
-            entityBody = "<HTML>" + "<HEAD><TITLE>Not Found</TITLE><HEAD>" + "<BODY>Not Found</BODY>" + "</HTML>"
-        
+            if (self.content_type(filename) != "text/plain"):
+                # generate 404 status line (since file was not found), specify the content type of the error
+                # message (in MIME) which is text/html, and set entityBody to a basic error message in HTML
+                statusLine = "HTTP/1.1 404 Not Found" + self.CRLF
+                contentTypeLine = "Content-type: text/html" + self.CRLF
+                entityBody = "<HTML>" + "<HEAD><TITLE>Not Found</TITLE><HEAD>" + "<BODY>Not Found</BODY>" + "</HTML>"
+            else:
+                statusLine = "HTTP/1.1 200 OK" + self.CRLF
+                contentTypeLine = "Content-type: text/plain" + self.CRLF
+
+                # create an instance of ftp client
+                ftpClient = FtpClient()
+
+                # connect to the ftp server
+                ftpClient.connect("matt", "123")
+
+                # retrieve the file from the ftp server
+                ftpClient.getFile(filename)
+
+                # disconnect from ftp server
+                ftpClient.disconnect()
+
+                # assign input stream to read the recently the recently ftp-downloaded file
+                try:
+                    self.file = open(filename, 'rb')
+                except:
+                    # if the open fails, it means getFile did not find a file and thus could 
+                    # not make a local version. So display Not Found message
+                    statusLine = "HTTP/1.1 404 Not Found" + self.CRLF
+                    contentTypeLine = "Content-type: text/html" + self.CRLF
+                    entityBody = "<HTML>" + "<HEAD><TITLE>Not Found</TITLE><HEAD>" + "<BODY>Not Found</BODY>" + "</HTML>"
+
         # print generated response
         self.print_response(statusLine, contentTypeLine, entityBody)
 
@@ -176,15 +211,17 @@ class HttpRequest(threading.Thread):\
         while bytes := file.read(buffer):
             outputStream.write(bytes)
 
-    def send_response_to_client(self, file, fileExists, outputStream, entityBody):
+    def send_response_to_client(self, file, filename, fileExists, outputStream, entityBody):
         """Send the entity body to output stream"""
         # if the file exists send the bytes from the file to outputStream in chunks and close file
         if (fileExists):
             self.send_bytes(file, outputStream)
             file.close()
         else:
-            # if the file does not exists write the error message HTML to the output stream
-            outputStream.write(entityBody.encode())
+            if (self.content_type(filename) != "text/plain" or entityBody != None):
+                outputStream.write(entityBody.encode())
+            else:
+                self.send_bytes(file, outputStream)
 
 
 def signal_handler(sig, frame):

@@ -1,6 +1,20 @@
+**How to Start up FTP**
+- make sure IPv6 is disabled (Control Panel->Network->The Wift->Propteries->uncheck IPv6)
+- disable firewalls(Control Panel->System and Security->Firewalls->Turn on/off->select off for both)
+- Open Docker
+- In a terminal run the following
+    - `docker run --rm -it -p 20:20 -p 21:21 -p 4559-4564:4559-4564 -e FTP_USER=<USER_NAME> -e FTP_PASSWORD=<PASSWORD> docker.io/panubo/vsftpd:latest`
+    - `docker container ls`
+    - `docker exec -it <CONTAINER_ID> /bin/bash`
+    - `chown ftp:ftp /srv`
+
+
 **WebServer.py**
 
-This still needs to be tested for successful completion of task 1.
+Tested and successful... now adding the last bit connecting to the FTP
+
+Notes for testing. Run from the Programming Assignment 1 directory with the following command:
+    `python webserver/WebServer.py`
 
 **FTPCLient.py**
 
@@ -13,4 +27,8 @@ Before Running
 
 **What is left?**
 
-Need to implment FTPClient into Webserver 
+I need to talk to prof
+- After letting the server run for a little i will get a requestLine of ""...
+- Is that exepcted...
+- Why is that???
+- Is the way I addressed it fine
