@@ -27,6 +27,8 @@ Before Running
 
 **What is left?**
 
+Look at clean up and comments
+
 I need to talk to prof
 - After letting the server run for a little i will get a requestLine of ""...
 - Is that exepcted...
